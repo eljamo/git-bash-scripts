@@ -6,10 +6,10 @@ Output:
 
 ```bash
 $ gfc
-1) develop
-2) feature/DASH-1-new-feature-1
-3) feature/DASH-2-new-feature-2
-4) main
+Please choose the branch you want to checkout:
+1) feature/DASH-1-new-feature-1
+2) feature/DASH-2-new-feature-2
+3) main
 #?
 ```
 
@@ -19,6 +19,7 @@ Output:
 
 ```bash
 $ gfc feature/
+Please choose the branch you want to checkout:
 1) feature/DASH-1-new-feature-1
 2) feature/DASH-2-new-feature-2
 #?
