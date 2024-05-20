@@ -27,11 +27,9 @@ Please choose the branch you want to checkout:
 
 ## Example aliases
 
-```
-1) gfcb = gfc bugfix/
-2) gfcd = git develop
-3) gfcf = gfc feature/
-4) gfch = gfc hotfix/
-5) gfcm = gfc main master
-6) gfcr = gfc release/
-```
+1. `gfcb` = `gfc bugfix/`
+2. `gfcd` = `git develop`
+3. `gfcf` = `gfc feature/`
+4. `gfch` = `gfc hotfix/`
+5. `gfcm` = `gfc main master`
+6. `gfcr` = `gfc release/`
