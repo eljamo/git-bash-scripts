@@ -4,27 +4,27 @@ The `gfc` returns a numbered list of the branches on that repository (local and 
 
 Output:
 
-```
-/a/m/h/d/c/d/dashboard $ gfc
+```bash
+$ gfc
 1) develop
 2) feature/DASH-1-new-feature-1
 3) feature/DASH-2-new-feature-2
 4) main
-#? 3
+#?
 ```
 
 However it can filter also, so if you type "feature/" it'll bring back only the feature branches.
 
 Output:
 
-```
-/a/m/h/d/c/d/dashboard $ gfc feature/
+```bash
+$ gfc feature/
 1) feature/DASH-1-new-feature-1
 2) feature/DASH-2-new-feature-2
 #?
 ```
 
-## Aliases I Use
+## Example aliases
 
 ```
 1) gfcb = gfc bugfix/
