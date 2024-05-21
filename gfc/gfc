@@ -53,13 +53,19 @@ select BRANCH in $BRANCHES; do
       exit 1
     fi
     
-    git pull
-    if [ $? -ne 0 ]; then
-      echo "Error: Failed to pull latest changes for branch '$BRANCH'." >&2
-      exit 1
+    # Check if branch has a remote tracking branch
+    TRACKING_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "$BRANCH@{u}" 2> /dev/null)
+    if [ -n "$TRACKING_BRANCH" ]; then
+      git pull
+      if [ $? -ne 0 ]; then
+        echo "Error: Failed to pull latest changes for branch '$BRANCH'." >&2
+        exit 1
+      fi
+      echo "Successfully checked out and updated branch '$BRANCH'."
+    else
+      echo "Successfully checked out branch '$BRANCH', but no tracking branch to pull from."
     fi
     
-    echo "Successfully checked out and updated branch '$BRANCH'."
     exit 0
   else
     echo "Invalid selection. Please try again."
