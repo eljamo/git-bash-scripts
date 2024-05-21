@@ -15,16 +15,23 @@ fi
 # Fetch all branches and prune
 git fetch --all --prune &> /dev/null
 
-# Get list of branches based on search terms
-if [ -z "$1" ] && [ -z "$2" ]; then
-  BRANCHES=$(git branch -r | sed 's|origin/||' | sed '/HEAD/d' | sort -u)
-else
+# Get list of local branches
+LOCAL_BRANCHES=$(git branch --format="%(refname:short)")
+
+# Get list of remote branches
+REMOTE_BRANCHES=$(git branch -r | grep -v 'HEAD' | sed 's|^ *origin/||')
+
+# Combine local and remote branches, removing duplicates
+BRANCHES=$(echo -e "$LOCAL_BRANCHES\n$REMOTE_BRANCHES" | sort -u)
+
+# Filter branches based on search terms
+if [ -n "$1" ] || [ -n "$2" ]; then
   if [ -n "$1" ] && [ -n "$2" ]; then
-    BRANCHES=$(git branch -r | grep -iE "$1|$2" | sed 's|origin/||' | sed '/HEAD/d' | sort -u)
+    BRANCHES=$(echo "$BRANCHES" | grep -iE "$1|$2")
   elif [ -n "$1" ]; then
-    BRANCHES=$(git branch -r | grep -i "$1" | sed 's|origin/||' | sed '/HEAD/d' | sort -u)
+    BRANCHES=$(echo "$BRANCHES" | grep -i "$1")
   elif [ -n "$2" ]; then
-    BRANCHES=$(git branch -r | grep -i "$2" | sed 's|origin/||' | sed '/HEAD/d' | sort -u)
+    BRANCHES=$(echo "$BRANCHES" | grep -i "$2")
   fi
 fi
 
@@ -40,6 +47,7 @@ echo "Please choose the branch you want to checkout:"
 select BRANCH in $BRANCHES; do
   if [ -n "$BRANCH" ]; then
     git checkout "$BRANCH"
+    
     if [ $? -ne 0 ]; then
       echo "Error: Failed to checkout branch '$BRANCH'." >&2
       exit 1
