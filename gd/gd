@@ -1,34 +1,36 @@
 #!/bin/bash
 
+# Function to print error message and exit
+error_exit() {
+  echo "Error: $1" >&2
+  exit 1
+}
+
 # Check if git is installed
 if ! command -v git &> /dev/null; then
-  echo "Error: git is not installed." >&2
-  exit 1
+  error_exit "git is not installed."
 fi
 
 # Check if current directory is a git repository
 if [[ ! -d .git ]] && ! git rev-parse --git-dir > /dev/null 2>&1; then
-  echo "Error: Not a git repository." >&2
-  exit 1
+  error_exit "Not a git repository."
 fi
 
 # Fetch all branches and prune
-git fetch --all --prune &> /dev/null
+if ! git fetch --all --prune &> /dev/null; then
+  error_exit "Failed to fetch branches."
+fi
 
 # Get list of branches, filter if a pattern is provided
 if [[ -z "$1" ]]; then
-  BRANCHES=$(git branch | sed 's/^* //')
+  BRANCHES=$(git branch --format="%(refname:short)")
 else
-  BRANCHES=$(git branch | grep -i "$1" | sed 's/^* //')
+  BRANCHES=$(git branch --format="%(refname:short)" | grep -i "$1")
 fi
-
-# Clean up branch list
-BRANCHES=$(echo "$BRANCHES" | xargs -n1 | sort -u | xargs)
 
 # Check if branches were found
 if [[ -z "$BRANCHES" ]]; then
-  echo "No branches found."
-  exit 1
+  error_exit "No branches found."
 fi
 
 echo "Please choose the branch you want to delete locally (this will not delete the remote branch):"
@@ -36,11 +38,11 @@ echo "Please choose the branch you want to delete locally (this will not delete 
 # Display branches in a select menu
 select BRANCH in $BRANCHES; do
   if [[ -n "$BRANCH" ]]; then
-    git branch -D "$BRANCH"
-    if [[ $? -ne 0 ]]; then
-      echo "Error: Failed to delete branch '$BRANCH'." >&2
-      exit 1
+    # Attempt to delete the selected branch
+    if ! git branch -D "$BRANCH"; then
+      error_exit "Failed to delete branch '$BRANCH'."
     fi
+    
     echo "Branch '$BRANCH' deleted successfully."
     exit 0
   else

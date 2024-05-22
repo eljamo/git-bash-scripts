@@ -1,44 +1,46 @@
 #!/bin/bash
 
+# Function to print error message and exit
+error_exit() {
+  echo "Error: $1" >&2
+  exit 1
+}
+
 # Check if git is installed
 if ! command -v git &> /dev/null; then
-  echo "Error: git is not installed." >&2
-  exit 1
+  error_exit "git is not installed."
 fi
 
 # Check if current directory is a git repository
-if [ ! -d .git ] && ! git rev-parse --git-dir > /dev/null 2>&1; then
-  echo "Error: Not a git repository." >&2
-  exit 1
+if ! git rev-parse --is-inside-work-tree &> /dev/null; then
+  error_exit "Not a git repository."
 fi
 
 # Fetch all branches and prune
-git fetch --all --prune &> /dev/null
+if ! git fetch --all --prune &> /dev/null; then
+  error_exit "Failed to fetch branches."
+fi
 
 # Get list of local branches
 LOCAL_BRANCHES=$(git branch --format="%(refname:short)")
 
-# Get list of remote branches
-REMOTE_BRANCHES=$(git branch -r | grep -v 'HEAD' | sed 's|^ *origin/||')
+# Get list of remote branches, stripping 'origin/' prefix and ignoring any 'HEAD' entry
+REMOTE_BRANCHES=$(git branch -r | awk '!/\/HEAD/ {sub(/^[^\/]*\//, ""); print}')
 
 # Combine local and remote branches, removing duplicates
 BRANCHES=$(echo -e "$LOCAL_BRANCHES\n$REMOTE_BRANCHES" | sort -u)
 
 # Filter branches based on search terms
 if [ -n "$1" ] || [ -n "$2" ]; then
-  if [ -n "$1" ] && [ -n "$2" ]; then
-    BRANCHES=$(echo "$BRANCHES" | grep -iE "$1|$2")
-  elif [ -n "$1" ]; then
-    BRANCHES=$(echo "$BRANCHES" | grep -i "$1")
-  elif [ -n "$2" ]; then
-    BRANCHES=$(echo "$BRANCHES" | grep -i "$2")
-  fi
+  SEARCH_PATTERN=""
+  [ -n "$1" ] && SEARCH_PATTERN+="$1"
+  [ -n "$2" ] && SEARCH_PATTERN+="|$2"
+  BRANCHES=$(echo "$BRANCHES" | grep -iE "$SEARCH_PATTERN")
 fi
 
 # Check if branches were found
 if [ -z "$BRANCHES" ]; then
-  echo "No branches found." >&2
-  exit 1
+  error_exit "No branches found."
 fi
 
 echo "Please choose the branch you want to checkout:"
@@ -46,20 +48,16 @@ echo "Please choose the branch you want to checkout:"
 # Display branches in a select menu
 select BRANCH in $BRANCHES; do
   if [ -n "$BRANCH" ]; then
-    git checkout "$BRANCH"
-    
-    if [ $? -ne 0 ]; then
-      echo "Error: Failed to checkout branch '$BRANCH'." >&2
-      exit 1
+    # Attempt to checkout the selected branch
+    if ! git checkout "$BRANCH"; then
+      error_exit "Failed to checkout branch '$BRANCH'."
     fi
     
     # Check if branch has a remote tracking branch
     TRACKING_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name "$BRANCH@{u}" 2> /dev/null)
     if [ -n "$TRACKING_BRANCH" ]; then
-      git pull
-      if [ $? -ne 0 ]; then
-        echo "Error: Failed to pull latest changes for branch '$BRANCH'." >&2
-        exit 1
+      if ! git pull; then
+        error_exit "Failed to pull latest changes for branch '$BRANCH'."
       fi
       echo "Successfully checked out and updated branch '$BRANCH'."
     else
