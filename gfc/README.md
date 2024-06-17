@@ -33,3 +33,4 @@ Please choose the branch you want to checkout:
 4. `gfch` = `gfc hotfix/`
 5. `gfcm` = `gfc main master`
 6. `gfcr` = `gfc release/`
+7. `gfct` = `gfc task/`
