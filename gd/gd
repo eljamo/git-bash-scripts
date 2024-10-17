@@ -21,11 +21,47 @@ if ! git fetch --all --prune &> /dev/null; then
   error_exit "Failed to fetch branches."
 fi
 
+BRANCHES=$(git branch --format="%(refname:short)")
+
+BRANCH_SEARCH_MODE="OR"
+
+# Parse the arguments to find --branch_search_mode
+for arg in "$@"; do
+  if [[ "$arg" == --branch_search_mode=* ]]; then
+    BRANCH_SEARCH_MODE="${arg#*=}"  # Extract the value after the '=' sign
+    BRANCH_SEARCH_MODE=$(echo "$BRANCH_SEARCH_MODE" | tr '[:lower:]' '[:upper:]')  # Convert to uppercase
+  fi
+done
+
+# Check if branch_search_mode is valid (either OR or AND)
+if [[ "$BRANCH_SEARCH_MODE" != "OR" && "$BRANCH_SEARCH_MODE" != "AND" ]]; then
+  error_exit "Error: Invalid branch_search_mode. Please use OR or AND (case-insensitive)."
+fi
+
 # Get list of branches, filter if a pattern is provided
-if [[ -z "$1" ]]; then
-  BRANCHES=$(git branch --format="%(refname:short)")
-else
-  BRANCHES=$(git branch --format="%(refname:short)" | grep -i "$1")
+# Filter branches based on search terms
+if [ "$#" -gt 0 ]; then
+  # Filter branches based on search terms using OR logic
+  if [[ "$BRANCH_SEARCH_MODE" == "OR" ]]; then
+    SEARCH_PATTERN=""
+    
+    for arg in "$@"; do
+      if [[ "$arg" != --*=* ]]; then
+        [ -n "$SEARCH_PATTERN" ] && SEARCH_PATTERN+="|"
+        SEARCH_PATTERN+="$arg"
+      fi
+    done
+    
+    BRANCHES=$(echo "$BRANCHES" | grep -iE "$SEARCH_PATTERN")
+
+  # Filter branches based on search terms using AND logic
+  elif [[ "$BRANCH_SEARCH_MODE" == "AND" ]]; then
+    for arg in "$@"; do
+      if [[ "$arg" != --*=* ]]; then
+        BRANCHES=$(echo "$BRANCHES" | grep -i "$arg")
+      fi
+    done
+  fi
 fi
 
 # Check if branches were found
@@ -36,9 +72,12 @@ fi
 echo "Please choose the branch you want to delete locally (this will not delete the remote branch):"
 
 # Display branches in a select menu
-select BRANCH in $BRANCHES; do
-  if [[ -n "$BRANCH" ]]; then
-    # Attempt to delete the selected branch
+select BRANCH in $BRANCHES "Cancel"; do
+  if [ "$BRANCH" == "Cancel" ]; then
+    echo "Operation canceled."
+    exit 0
+  elif [ -n "$BRANCH" ]; then
+    # Attempt to delete the branch
     if ! git branch -D "$BRANCH"; then
       error_exit "Failed to delete branch '$BRANCH'."
     fi

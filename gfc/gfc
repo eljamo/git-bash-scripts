@@ -30,12 +30,43 @@ REMOTE_BRANCHES=$(git branch -r | awk '!/\/HEAD/ {sub(/^[^\/]*\//, ""); print}')
 # Combine local and remote branches, removing duplicates
 BRANCHES=$(echo -e "$LOCAL_BRANCHES\n$REMOTE_BRANCHES" | sort -u)
 
+BRANCH_SEARCH_MODE="OR"
+
+# Parse the arguments to find --branch_search_mode
+for arg in "$@"; do
+  if [[ "$arg" == --branch_search_mode=* ]]; then
+    BRANCH_SEARCH_MODE="${arg#*=}"  # Extract the value after the '=' sign
+    BRANCH_SEARCH_MODE=$(echo "$BRANCH_SEARCH_MODE" | tr '[:lower:]' '[:upper:]')  # Convert to uppercase
+  fi
+done
+
+# Check if branch_search_mode is valid (either OR or AND)
+if [[ "$BRANCH_SEARCH_MODE" != "OR" && "$BRANCH_SEARCH_MODE" != "AND" ]]; then
+  error_exit "Error: Invalid branch_search_mode. Please use OR or AND (case-insensitive)."
+fi
+
 # Filter branches based on search terms
-if [ -n "$1" ] || [ -n "$2" ]; then
-  SEARCH_PATTERN=""
-  [ -n "$1" ] && SEARCH_PATTERN+="$1"
-  [ -n "$2" ] && SEARCH_PATTERN+="|$2"
-  BRANCHES=$(echo "$BRANCHES" | grep -iE "$SEARCH_PATTERN")
+if [ "$#" -gt 0 ]; then
+  # Filter branches based on search terms using OR logic
+  if [[ "$BRANCH_SEARCH_MODE" == "OR" ]]; then
+    SEARCH_PATTERN=""
+    for arg in "$@"; do
+      if [[ "$arg" != --*=* ]]; then
+        [ -n "$SEARCH_PATTERN" ] && SEARCH_PATTERN+="|"
+        SEARCH_PATTERN+="$arg"
+      fi
+    done
+    
+    BRANCHES=$(echo "$BRANCHES" | grep -iE "$SEARCH_PATTERN")
+
+  # Filter branches based on search terms using AND logic
+  elif [[ "$BRANCH_SEARCH_MODE" == "AND" ]]; then
+    for arg in "$@"; do
+      if [[ "$arg" != --*=* ]]; then
+        BRANCHES=$(echo "$BRANCHES" | grep -i "$arg")
+      fi
+    done
+  fi
 fi
 
 # Check if branches were found
@@ -46,8 +77,11 @@ fi
 echo "Please choose the branch you want to checkout:"
 
 # Display branches in a select menu
-select BRANCH in $BRANCHES; do
-  if [ -n "$BRANCH" ]; then
+select BRANCH in $BRANCHES "Cancel"; do
+  if [ "$BRANCH" == "Cancel" ]; then
+    echo "Operation canceled."
+    exit 0
+  elif [ -n "$BRANCH" ]; then
     # Attempt to checkout the selected branch
     if ! git checkout "$BRANCH"; then
       error_exit "Failed to checkout branch '$BRANCH'."
